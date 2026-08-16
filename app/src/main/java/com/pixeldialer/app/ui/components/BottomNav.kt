@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pixeldialer.app.ui.theme.LocalDialerPalette
 
@@ -45,7 +46,7 @@ fun DialerBottomNav(
     NavigationBar(
         containerColor = palette.navBackground,
         contentColor = palette.textSecondary,
-        tonalElevation = 0.dp.value.let { androidx.compose.ui.unit.dp }
+        tonalElevation = 0.dp
     ) {
         DialerTab.values().forEach { tab ->
             val isSelected = tab == selected

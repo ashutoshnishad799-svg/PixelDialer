@@ -48,16 +48,17 @@ fun Avatar(
         .take(2)
         .joinToString("") { it.first().uppercase() }
 
+    val backgroundModifier = if (initials.isNotBlank()) {
+        Modifier.background(color = palette.avatarBackground)
+    } else {
+        Modifier.background(brush = Brush.linearGradient(listOf(Color.Gray, Color.DarkGray)))
+    }
+
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(
-                if (initials.isNotBlank())
-                    palette.avatarBackground
-                else
-                    Brush.linearGradient(listOf(Color.Gray, Color.DarkGray))
-            ),
+            .then(backgroundModifier),
         contentAlignment = Alignment.Center
     ) {
         if (initials.isNotBlank()) {
