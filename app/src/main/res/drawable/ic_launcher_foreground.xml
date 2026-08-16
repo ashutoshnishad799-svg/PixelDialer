@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/vector"
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
@@ -12,7 +13,7 @@
 
     <!-- Main glass circle with radial sheen -->
     <path android:pathData="M54,20.5m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0">
-        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+        <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
                 android:startX="24"
