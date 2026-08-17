@@ -100,7 +100,7 @@ fun DialerScreen(
                 textAlign = TextAlign.Center
             )
 
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = matchedContact != null,
                 enter = fadeIn() + scaleIn(initialScale = 0.9f),
                 exit = fadeOut() + scaleOut(targetScale = 0.9f)
@@ -173,9 +173,9 @@ fun DialerScreen(
                 )
             }
 
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = number.isNotEmpty(),
-                modifier = Modifier.align(Alignment.CenterEnd),
+                modifier = Modifier,
                 enter = fadeIn() + scaleIn(initialScale = 0.7f),
                 exit = fadeOut() + scaleOut(targetScale = 0.7f)
             ) {
