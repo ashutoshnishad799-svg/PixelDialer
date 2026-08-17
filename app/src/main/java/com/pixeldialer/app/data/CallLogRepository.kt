@@ -15,6 +15,31 @@ class CallLogRepository(private val dao: CallLogDao) {
     fun observeMissed(): Flow<List<RecentCall>> =
         dao.observeMissed().map { entries -> groupConsecutive(entries) }
 
+    /**
+     * Pulls the device's real call history (from the system CallLog provider,
+     * via [SystemCallLogRepository]) into our local Room cache. This is what
+     * makes calls made *before* this app was installed — or before it was
+     * default dialer — appear in Recents. Safe to call repeatedly: the
+     * (phoneNumber, timestampMillis) unique index means already-synced
+     * entries are silently ignored rather than duplicated.
+     */
+    suspend fun syncFromSystem(systemRepo: SystemCallLogRepository) {
+        val systemEntries = systemRepo.loadRecentHistory()
+        if (systemEntries.isEmpty()) return
+
+        val asEntities = systemEntries.map { entry ->
+            CallLogEntity(
+                phoneNumber = entry.phoneNumber,
+                displayName = entry.displayName,
+                direction = entry.direction,
+                timestampMillis = entry.timestampMillis,
+                durationSeconds = entry.durationSeconds,
+                photoUri = entry.photoUri
+            )
+        }
+        dao.insertAll(asEntities)
+    }
+
     private fun groupConsecutive(entries: List<CallLogEntity>): List<RecentCall> {
         if (entries.isEmpty()) return emptyList()
         val result = mutableListOf<RecentCall>()

@@ -67,11 +67,20 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(hasPermissions) {
-                if (hasPermissions) viewModel.loadContacts()
+                if (hasPermissions) {
+                    viewModel.loadContacts()
+                    viewModel.syncCallHistory()
+                }
             }
 
             fun placeCall(number: String) {
-                val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number"))
+                DialerPermissions.placeCall(context, number)
+            }
+
+            fun sendMessage(number: String) {
+                val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number")).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
                 context.startActivity(intent)
             }
 
@@ -121,9 +130,11 @@ class MainActivity : ComponentActivity() {
                                     DialerTab.CONTACTS -> ContactsScreen(
                                         contacts = contacts,
                                         onCall = { contact -> placeCall(contact.phoneNumber) },
+                                        onMessage = { contact -> sendMessage(contact.phoneNumber) },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     DialerTab.DIALER -> DialerScreen(
+                                        contacts = contacts,
                                         onCall = { number -> placeCall(number) },
                                         modifier = Modifier.fillMaxSize()
                                     )

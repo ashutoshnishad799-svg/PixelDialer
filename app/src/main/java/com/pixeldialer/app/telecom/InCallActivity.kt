@@ -1,7 +1,9 @@
 package com.pixeldialer.app.telecom
 
+import android.os.Build
 import android.os.Bundle
 import android.telecom.Call
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
@@ -17,6 +19,7 @@ class InCallActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setupLockScreenAndWakeFlags()
 
         val app = application as PixelDialerApp
 
@@ -70,6 +73,27 @@ class InCallActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Modern replacement for the deprecated manifest attributes
+     * (showOnLockScreen/showWhenLocked/turnScreenOn) — these runtime flags
+     * are what actually get this screen to show up over the lock screen
+     * and wake the device reliably on current Android versions.
+     */
+    private fun setupLockScreenAndWakeFlags() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            )
         }
     }
 

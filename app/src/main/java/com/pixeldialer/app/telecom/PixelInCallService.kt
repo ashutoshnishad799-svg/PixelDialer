@@ -40,18 +40,28 @@ class PixelInCallService : InCallService() {
             super.onStateChanged(call, state)
             Log.d(TAG, "Call state changed: $state")
             notifyListeners()
+            handleStateForNotification(call, state)
             if (state == Call.STATE_DISCONNECTED) {
                 call.unregisterCallback(this)
+                CallNotificationHelper.clear(applicationContext)
             }
         }
     }
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
-        Log.d(TAG, "Call added: ${call.details.handle}")
+        Log.d(TAG, "Call added: ${call.details.handle}, state=${call.state}")
         currentCall = call
         call.registerCallback(callCallback)
         notifyListeners()
+
+        // Always launch via the full-screen notification path, not a bare
+        // startActivity() — that call silently fails from a background
+        // service on Android 10+ (screen off / app backgrounded), which
+        // was the root cause of the "no ring UI, only vibration, answer
+        // button does nothing" bug: the InCallActivity was simply never
+        // opening in those situations.
+        handleStateForNotification(call, call.state)
         launchInCallUi()
     }
 
@@ -63,13 +73,37 @@ class PixelInCallService : InCallService() {
             currentCall = null
         }
         notifyListeners()
+        CallNotificationHelper.clear(applicationContext)
+    }
+
+    private fun handleStateForNotification(call: Call, state: Int) {
+        val number = call.details?.handle?.schemeSpecificPart ?: "Unknown"
+        val name = call.details?.callerDisplayName?.takeIf { it.isNotBlank() } ?: number
+
+        when (state) {
+            Call.STATE_RINGING -> {
+                CallNotificationHelper.showIncomingCallNotification(applicationContext, name, number)
+            }
+            Call.STATE_ACTIVE, Call.STATE_HOLDING -> {
+                CallNotificationHelper.showOngoingCallNotification(applicationContext, name)
+            }
+            Call.STATE_DISCONNECTED -> {
+                CallNotificationHelper.clear(applicationContext)
+            }
+        }
     }
 
     private fun launchInCallUi() {
         val intent = Intent(this, InCallActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        startActivity(intent)
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Expected to fail in some background states — the full-screen
+            // notification above is the reliable path in those cases.
+            Log.w(TAG, "Direct startActivity failed, relying on full-screen notification", e)
+        }
     }
 
     /** Call action helpers, invoked from the Compose UI. */

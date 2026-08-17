@@ -53,11 +53,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="tel" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="tel" />
-            </intent-filter>
         </activity>
 
         <!-- ===== Full-screen in-call UI ===== -->
@@ -106,6 +101,11 @@
                 <data android:scheme="tel" />
             </intent-filter>
         </activity>
+
+        <!-- ===== Handles Answer/Decline taps directly from the incoming-call notification ===== -->
+        <receiver
+            android:name=".telecom.CallActionReceiver"
+            android:exported="false" />
 
     </application>
 </manifest>

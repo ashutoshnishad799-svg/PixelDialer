@@ -6,6 +6,7 @@ import com.pixeldialer.app.data.CallLogRepository
 import com.pixeldialer.app.data.Contact
 import com.pixeldialer.app.data.ContactsRepository
 import com.pixeldialer.app.data.RecentCall
+import com.pixeldialer.app.data.SystemCallLogRepository
 import com.pixeldialer.app.data.ThemePreference
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val callLogRepository: CallLogRepository,
+    private val systemCallLogRepository: SystemCallLogRepository,
     private val contactsRepository: ContactsRepository,
     private val themePreference: ThemePreference
 ) : ViewModel() {
@@ -31,6 +33,9 @@ class MainViewModel(
     private val _contacts = MutableStateFlow<List<Contact>>(emptyList())
     val contacts: StateFlow<List<Contact>> = _contacts
 
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing
+
     fun setTheme(id: String) {
         viewModelScope.launch {
             themePreference.setTheme(id)
@@ -40,6 +45,18 @@ class MainViewModel(
     fun loadContacts() {
         viewModelScope.launch {
             _contacts.value = contactsRepository.loadAllContacts()
+        }
+    }
+
+    /** Pulls existing device call history into Recents. Call once permissions are granted. */
+    fun syncCallHistory() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                callLogRepository.syncFromSystem(systemCallLogRepository)
+            } finally {
+                _isSyncing.value = false
+            }
         }
     }
 

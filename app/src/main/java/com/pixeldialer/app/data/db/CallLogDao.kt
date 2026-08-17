@@ -16,8 +16,14 @@ interface CallLogDao {
     @Query("SELECT * FROM call_log WHERE direction = 'MISSED' ORDER BY timestampMillis DESC")
     fun observeMissed(): Flow<List<CallLogEntity>>
 
+    @Query("SELECT timestampMillis FROM call_log")
+    suspend fun allTimestamps(): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entry: CallLogEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(entries: List<CallLogEntity>)
 
     @Delete
     suspend fun delete(entry: CallLogEntity)

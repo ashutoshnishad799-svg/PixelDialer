@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.pixeldialer.app.data.CallLogRepository
 import com.pixeldialer.app.data.ContactsRepository
+import com.pixeldialer.app.data.SystemCallLogRepository
 import com.pixeldialer.app.data.ThemePreference
 import com.pixeldialer.app.data.db.PixelDialerDatabase
 
@@ -14,6 +15,8 @@ class PixelDialerApp : Application() {
     lateinit var database: PixelDialerDatabase
         private set
     lateinit var callLogRepository: CallLogRepository
+        private set
+    lateinit var systemCallLogRepository: SystemCallLogRepository
         private set
     lateinit var contactsRepository: ContactsRepository
         private set
@@ -24,6 +27,7 @@ class PixelDialerApp : Application() {
         super.onCreate()
         database = PixelDialerDatabase.getInstance(this)
         callLogRepository = CallLogRepository(database.callLogDao())
+        systemCallLogRepository = SystemCallLogRepository(this)
         contactsRepository = ContactsRepository(this)
         themePreference = ThemePreference(this)
         createNotificationChannels()

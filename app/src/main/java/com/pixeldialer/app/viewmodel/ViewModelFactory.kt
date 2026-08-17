@@ -10,6 +10,7 @@ class ViewModelFactory(private val app: PixelDialerApp) : ViewModelProvider.Fact
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             return MainViewModel(
                 app.callLogRepository,
+                app.systemCallLogRepository,
                 app.contactsRepository,
                 app.themePreference
             ) as T

@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [CallLogEntity::class, BlockedNumberEntity::class, FavoriteEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
