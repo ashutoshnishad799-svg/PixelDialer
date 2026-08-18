@@ -32,9 +32,23 @@ sealed class BackupResult {
  */
 class CloudBackupRepository {
 
-    private val db = FirebaseFirestore.getInstance()
+    /**
+     * Same guard as AuthRepository.firebaseAuth: FirebaseFirestore.getInstance()
+     * throws IllegalStateException if no google-services.json was present at
+     * build time (FirebaseApp never registered). Constructed eagerly in
+     * PixelDialerApp.onCreate(), so an unguarded call here used to crash the
+     * whole app at launch, before permissions were even asked for. Failing
+     * soft here instead: db stays null, backup/restore report a clean
+     * Failure/null instead of throwing, and the rest of the app is unaffected.
+     */
+    private val db: FirebaseFirestore? = try {
+        FirebaseFirestore.getInstance()
+    } catch (e: IllegalStateException) {
+        android.util.Log.w("CloudBackupRepository", "Firebase not configured — cloud backup disabled.", e)
+        null
+    }
 
-    private fun userDoc(uid: String) = db.collection("users").document(uid)
+    private fun userDoc(uid: String) = db?.collection("users")?.document(uid)
 
     suspend fun backup(
         uid: String,
@@ -42,6 +56,7 @@ class CloudBackupRepository {
         blockedNumbers: List<BlockedNumberEntity>,
         themeId: String
     ): BackupResult {
+        val doc = userDoc(uid) ?: return BackupResult.Failure("Cloud backup isn't set up yet.")
         return try {
             val payload = mapOf(
                 "callLog" to callLog.take(500).map { it.toMap() },
@@ -49,7 +64,7 @@ class CloudBackupRepository {
                 "themeId" to themeId,
                 "lastBackedUpAtMillis" to System.currentTimeMillis()
             )
-            userDoc(uid).set(payload, SetOptions.merge()).await()
+            doc.set(payload, SetOptions.merge()).await()
             BackupResult.Success
         } catch (e: Exception) {
             BackupResult.Failure(e.message ?: "Backup failed.")
@@ -57,7 +72,8 @@ class CloudBackupRepository {
     }
 
     suspend fun restore(uid: String): BackupSnapshot? {
-        val snapshot = userDoc(uid).get().await()
+        val doc = userDoc(uid) ?: return null
+        val snapshot = doc.get().await()
         if (!snapshot.exists()) return null
 
         val callLogRaw = snapshot.get("callLog") as? List<*> ?: emptyList<Any>()
@@ -72,7 +88,7 @@ class CloudBackupRepository {
     }
 
     suspend fun deleteUserData(uid: String) {
-        userDoc(uid).delete().await()
+        userDoc(uid)?.delete()?.await()
     }
 
     private fun CallLogEntity.toMap() = mapOf(

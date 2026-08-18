@@ -5,6 +5,76 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Sanity-check google-services.json BEFORE the google-services plugin's own
+// processDebugGoogleServices task runs. That plugin task fails silently in
+// ways that are easy to miss in CI logs (or, on older plugin versions, just
+// skips writing default_web_client_id) when package_name in the JSON doesn't
+// match applicationId below — which is exactly the mismatch that causes
+// FirebaseAuth.getInstance()/FirebaseFirestore.getInstance() to throw
+// IllegalStateException at runtime, i.e. the Home-screen-after-permissions
+// crash. This task prints an impossible-to-miss log line so a CI run tells
+// you immediately which one it is, instead of finding out from a crash on
+// a physical device.
+tasks.register("checkGoogleServicesPackageName") {
+    doLast {
+        val jsonFile = file("google-services.json")
+        val expectedPackage = "com.pixeldialer.app"
+
+        if (!jsonFile.exists()) {
+            logger.error("")
+            logger.error("========================================================================")
+            logger.error("  ❌ app/google-services.json NOT FOUND")
+            logger.error("  Firebase sign-in/cloud-backup will be silently disabled at runtime")
+            logger.error("  (the app itself is coded to fail soft — it will NOT crash — but the")
+            logger.error("  Account tab's sign-in button will show 'Sign-in isn't set up yet').")
+            logger.error("========================================================================")
+            logger.error("")
+            return@doLast
+        }
+
+        val text = jsonFile.readText()
+        // Cheap extraction, no JSON dep needed here: find "package_name": "..."
+        val match = Regex("\"package_name\"\\s*:\\s*\"([^\"]+)\"").find(text)
+        val foundPackages = Regex("\"package_name\"\\s*:\\s*\"([^\"]+)\"")
+            .findAll(text).map { it.groupValues[1] }.toSet()
+
+        if (match == null) {
+            logger.error("")
+            logger.error("========================================================================")
+            logger.error("  ❌ google-services.json found but no package_name field could be read")
+            logger.error("  This usually means the file is corrupted, truncated, or not valid JSON.")
+            logger.error("  Bytes: ${text.length}")
+            logger.error("========================================================================")
+            logger.error("")
+            return@doLast
+        }
+
+        if (expectedPackage !in foundPackages) {
+            logger.error("")
+            logger.error("========================================================================")
+            logger.error("  ❌ PACKAGE NAME MISMATCH — this is almost certainly your crash cause")
+            logger.error("")
+            logger.error("  app/build.gradle.kts applicationId : $expectedPackage")
+            logger.error("  google-services.json package_name  : ${foundPackages.joinToString(", ")}")
+            logger.error("")
+            logger.error("  Fix: in Firebase Console → Project Settings → Your apps → Android app,")
+            logger.error("  the Android package name MUST be exactly '$expectedPackage'.")
+            logger.error("  If it isn't, add a NEW Android app in Firebase Console with that exact")
+            logger.error("  package name, download ITS google-services.json, base64 it, and replace")
+            logger.error("  the GOOGLE_SERVICES_JSON GitHub secret with the new value.")
+            logger.error("========================================================================")
+            logger.error("")
+        } else {
+            logger.lifecycle("✅ google-services.json package_name matches applicationId ($expectedPackage)")
+        }
+    }
+}
+
+tasks.matching { it.name == "processDebugGoogleServices" || it.name == "processReleaseGoogleServices" }
+    .configureEach {
+        dependsOn("checkGoogleServicesPackageName")
+    }
+
 android {
     namespace = "com.pixeldialer.app"
     compileSdk = 35

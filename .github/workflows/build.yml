@@ -34,6 +34,17 @@ jobs:
 
           echo "✅ app/google-services.json written ($(wc -c < app/google-services.json) bytes)"
 
+          echo ""
+          echo "=================================================================="
+          echo "  package_name found inside the decoded google-services.json:"
+          grep -o '"package_name"[[:space:]]*:[[:space:]]*"[^"]*"' app/google-services.json || echo "  (none found — file may be malformed)"
+          echo ""
+          echo "  This MUST read: \"package_name\": \"com.pixeldialer.app\""
+          echo "  If it shows a different package name, that mismatch is why"
+          echo "  Firebase sign-in/backup silently no-ops (or previously crashed)"
+          echo "  at runtime — fix it in Firebase Console, not in code."
+          echo "=================================================================="
+
       # Install Gradle 8.7
       - name: Generate Gradle Wrapper
         uses: gradle/actions/setup-gradle@v4

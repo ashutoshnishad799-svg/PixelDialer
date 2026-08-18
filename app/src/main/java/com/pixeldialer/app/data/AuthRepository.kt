@@ -2,15 +2,18 @@ package com.pixeldialer.app.data
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.tasks.await
 
 data class SignedInUser(
@@ -38,11 +41,36 @@ sealed class SignInResult {
  */
 class AuthRepository(private val context: Context) {
 
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    /**
+     * Firebase requires a valid app/google-services.json (matching this app's
+     * applicationId) to be present at build time. Without it, FirebaseApp is
+     * never registered and any FirebaseAuth.getInstance() / FirebaseFirestore
+     * .getInstance() call throws IllegalStateException("Default FirebaseApp
+     * is not initialized..."). That used to happen here, in the constructor
+     * — which runs eagerly from PixelDialerApp.onCreate() — so the crash
+     * surfaced later, whenever `currentUser` was first collected (i.e. as
+     * soon as the Home screen composed after permissions were granted),
+     * even though the real cause was Firebase setup at app-launch time.
+     *
+     * We now guard on FirebaseApp actually being initialized and fail soft:
+     * firebaseAuth stays null, sign-in/account features quietly no-op, and
+     * the rest of the app (dialer, contacts, recents, recording) is
+     * unaffected. See the README's Firebase setup section to add a real
+     * google-services.json and restore cloud sign-in/backup.
+     */
+    private val firebaseAuth: FirebaseAuth? = try {
+        if (FirebaseApp.getApps(context).isNotEmpty()) FirebaseAuth.getInstance() else null
+    } catch (e: IllegalStateException) {
+        Log.w("AuthRepository", "Firebase not configured — sign-in disabled. Add google-services.json.", e)
+        null
+    }
 
-    private val googleSignInClient: GoogleSignInClient by lazy {
+    private val googleSignInClient: GoogleSignInClient? by lazy {
+        if (firebaseAuth == null) return@lazy null
+        val webId = webClientId()
+        if (webId.isEmpty()) return@lazy null
         val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId())
+            .requestIdToken(webId)
             .requestEmail()
             .build()
         GoogleSignIn.getClient(context, options)
@@ -54,23 +82,28 @@ class AuthRepository(private val context: Context) {
         return if (resId != 0) context.getString(resId) else ""
     }
 
-    val currentUser: Flow<SignedInUser?> = callbackFlow {
-        val listener = FirebaseAuth.AuthStateListener { auth ->
-            trySend(auth.currentUser?.toSignedInUser())
+    val currentUser: Flow<SignedInUser?> = firebaseAuth?.let { auth ->
+        callbackFlow {
+            val listener = FirebaseAuth.AuthStateListener { a ->
+                trySend(a.currentUser?.toSignedInUser())
+            }
+            auth.addAuthStateListener(listener)
+            awaitClose { auth.removeAuthStateListener(listener) }
         }
-        firebaseAuth.addAuthStateListener(listener)
-        awaitClose { firebaseAuth.removeAuthStateListener(listener) }
-    }
+    } ?: flowOf(null)
 
-    fun isSignedIn(): Boolean = firebaseAuth.currentUser != null
+    fun isSignedIn(): Boolean = firebaseAuth?.currentUser != null
 
-    fun signInIntent(): Intent = googleSignInClient.signInIntent
+    /** Null when Firebase isn't configured — caller should treat this as "sign-in unavailable". */
+    fun signInIntent(): Intent? = googleSignInClient?.signInIntent
 
     suspend fun handleSignInResult(data: Intent?): SignInResult {
+        val auth = firebaseAuth
+            ?: return SignInResult.Failure("Sign-in isn't set up yet.")
         return try {
             val account = GoogleSignIn.getSignedInAccountFromIntent(data).await()
             val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-            val authResult = firebaseAuth.signInWithCredential(credential).await()
+            val authResult = auth.signInWithCredential(credential).await()
             val user = authResult.user?.toSignedInUser()
                 ?: return SignInResult.Failure("Sign-in succeeded but no user was returned.")
             SignInResult.Success(user)
@@ -80,16 +113,16 @@ class AuthRepository(private val context: Context) {
     }
 
     suspend fun signOut() {
-        firebaseAuth.signOut()
+        firebaseAuth?.signOut()
         try {
-            googleSignInClient.signOut().await()
+            googleSignInClient?.signOut()?.await()
         } catch (e: Exception) {
             // Non-fatal — Firebase-side sign-out already happened, which is what matters for app state.
         }
     }
 
     suspend fun deleteAccount(): Result<Unit> {
-        val user = firebaseAuth.currentUser ?: return Result.failure(IllegalStateException("No signed-in user"))
+        val user = firebaseAuth?.currentUser ?: return Result.failure(IllegalStateException("No signed-in user"))
         return try {
             user.delete().await()
             Result.success(Unit)

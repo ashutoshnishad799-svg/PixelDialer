@@ -208,7 +208,18 @@ class MainActivity : ComponentActivity() {
                                             lastBackedUpAtMillis = lastBackedUpAt,
                                             backupState = backupState,
                                             onBack = { overlay = OverlayScreen.NONE },
-                                            onSignIn = { signInLauncher.launch(viewModel.signInIntent()) },
+                                            onSignIn = {
+                                                val intent = viewModel.signInIntent()
+                                                if (intent != null) {
+                                                    signInLauncher.launch(intent)
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Sign-in isn't set up yet",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            },
                                             onSignOut = { viewModel.signOut() },
                                             onToggleCloudBackup = { enabled -> viewModel.setCloudBackupEnabled(enabled) },
                                             onBackupNow = { viewModel.backupNow() },

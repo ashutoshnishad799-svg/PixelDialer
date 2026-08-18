@@ -99,7 +99,8 @@ class MainViewModel(
 
     // ── Auth ──────────────────────────────────────────────────────────
 
-    fun signInIntent(): Intent = authRepository.signInIntent()
+    /** Null when Firebase/Google Sign-In isn't configured for this build — caller should show a message instead of launching. */
+    fun signInIntent(): Intent? = authRepository.signInIntent()
 
     fun handleSignInResult(data: Intent?, onDone: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
