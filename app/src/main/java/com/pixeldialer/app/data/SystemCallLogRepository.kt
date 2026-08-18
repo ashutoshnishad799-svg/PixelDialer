@@ -44,7 +44,7 @@ class SystemCallLogRepository(private val context: Context) {
                 projection,
                 null,
                 null,
-                "${CallLog.Calls.DATE} DESC LIMIT $limit"
+                "${CallLog.Calls.DATE} DESC"
             )?.use { cursor ->
                 val numberIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
                 val nameIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
@@ -53,7 +53,8 @@ class SystemCallLogRepository(private val context: Context) {
                 val durationIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
                 val photoIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_PHOTO_URI)
 
-                while (cursor.moveToNext()) {
+                var loaded = 0
+                while (loaded < limit && cursor.moveToNext()) {
                     val number = cursor.getString(numberIdx) ?: continue
                     val type = cursor.getInt(typeIdx)
 
@@ -67,6 +68,7 @@ class SystemCallLogRepository(private val context: Context) {
                             photoUri = cursor.getString(photoIdx)
                         )
                     )
+                    loaded++
                 }
             }
             results
