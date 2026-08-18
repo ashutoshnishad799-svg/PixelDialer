@@ -1,0 +1,36 @@
+[1mdiff --git a/app/src/main/java/com/pixeldialer/app/ui/screens/AccountScreen.kt b/app/src/main/java/com/pixeldialer/app/ui/screens/AccountScreen.kt[m
+[1mindex 228d58a..566b63f 100644[m
+[1m--- a/app/src/main/java/com/pixeldialer/app/ui/screens/AccountScreen.kt[m
+[1m+++ b/app/src/main/java/com/pixeldialer/app/ui/screens/AccountScreen.kt[m
+[36m@@ -12,8 +12,10 @@[m [mimport androidx.compose.material.icons.filled.CloudUpload[m
+ import androidx.compose.material.icons.filled.Person[m
+ import androidx.compose.material3.*[m
+ import androidx.compose.runtime.Composable[m
+[32m+[m[32mimport androidx.compose.runtime.getValue[m
+ import androidx.compose.runtime.mutableStateOf[m
+ import androidx.compose.runtime.remember[m
+[32m+[m[32mimport androidx.compose.runtime.setValue[m
+ import androidx.compose.ui.Alignment[m
+ import androidx.compose.ui.Modifier[m
+ import androidx.compose.ui.draw.clip[m
+[1mdiff --git a/app/src/main/java/com/pixeldialer/app/ui/screens/DialerScreen.kt b/app/src/main/java/com/pixeldialer/app/ui/screens/DialerScreen.kt[m
+[1mindex f29f055..a100061 100644[m
+[1m--- a/app/src/main/java/com/pixeldialer/app/ui/screens/DialerScreen.kt[m
+[1m+++ b/app/src/main/java/com/pixeldialer/app/ui/screens/DialerScreen.kt[m
+[36m@@ -3,7 +3,6 @@[m [mpackage com.pixeldialer.app.ui.screens[m
+ import android.os.Build[m
+ import android.os.VibrationEffect[m
+ import android.os.Vibrator[m
+[31m-import androidx.compose.animation.AnimatedVisibility[m
+ import androidx.compose.animation.core.Spring[m
+ import androidx.compose.animation.core.spring[m
+ import androidx.compose.animation.fadeIn[m
+[36m@@ -173,7 +172,7 @@[m [mfun DialerScreen([m
+                 )[m
+             }[m
+ [m
+[31m-            AnimatedVisibility([m
+[32m+[m[32m            androidx.compose.animation.AnimatedVisibility([m
+                 visible = number.isNotEmpty(),[m
+                 modifier = Modifier.align(Alignment.CenterEnd),[m
+                 enter = fadeIn() + scaleIn(initialScale = 0.7f),[m

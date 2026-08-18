@@ -3,7 +3,6 @@ package com.pixeldialer.app.ui.screens
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -173,7 +172,7 @@ fun DialerScreen(
                 )
             }
 
-            AnimatedVisibility(
+            androidx.compose.animation.AnimatedVisibility(
                 visible = number.isNotEmpty(),
                 modifier = Modifier.align(Alignment.CenterEnd),
                 enter = fadeIn() + scaleIn(initialScale = 0.7f),
