@@ -19,24 +19,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Decodes the GOOGLE_SERVICES_JSON repo secret back into a real file
-      # at app/google-services.json — the exact path/name the Google
-      # Services Gradle plugin expects. This runs BEFORE the build step so
-      # the file exists when Gradle needs it, and the file only ever lives
-      # on the (ephemeral, private) CI runner's disk — never committed,
-      # never visible in logs, gone the moment the job finishes.
+      # Decode Firebase config from GitHub Secret
       - name: Decode google-services.json from secret
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -z "$GOOGLE_SERVICES_JSON" ]; then
             echo "❌ GOOGLE_SERVICES_JSON secret is empty or not set."
-            echo "   Add it under Settings → Secrets and variables → Actions."
+            echo "Add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
+
           echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
+
           echo "✅ app/google-services.json written ($(wc -c < app/google-services.json) bytes)"
 
+      # Install Gradle 8.7
       - name: Generate Gradle Wrapper
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -48,33 +46,42 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x gradlew
 
+      # Build APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      # Prints the SHA-1 of the keystore this CI run just signed the debug
-      # APK with. Firebase Google Sign-In checks this fingerprint against
-      # what's registered in the Firebase Console — a CI-built APK is
-      # signed with a keystore Gradle auto-generates on the runner (NOT
-      # your local Android Studio debug keystore), so sign-in will fail on
-      # this APK specifically until this SHA-1 is added to the Firebase
-      # Console too (Project settings → Your apps → Add fingerprint).
+      # Print SHA-1 if debug keystore exists.
+      # This step can NEVER block APK upload.
       - name: Print debug keystore SHA-1 (for Firebase Console)
+        continue-on-error: true
         run: |
           echo ""
           echo "=================================================================="
-          echo "  Add this SHA-1 to Firebase Console → Project settings →"
-          echo "  Your apps → (this Android app) → Add fingerprint"
-          echo "  so Google Sign-In works on APKs built by THIS workflow."
-          echo "=================================================================="
-          keytool -list -v \
-            -keystore ~/.android/debug.keystore \
-            -alias androiddebugkey \
-            -storepass android \
-            -keypass android 2>/dev/null | grep "SHA1:"
+          echo "  Firebase Debug SHA-1"
           echo "=================================================================="
 
+          KEYSTORE="$HOME/.android/debug.keystore"
+
+          if [ -f "$KEYSTORE" ]; then
+            echo "✅ debug.keystore found."
+
+            keytool -list -v \
+              -keystore "$KEYSTORE" \
+              -alias androiddebugkey \
+              -storepass android \
+              -keypass android 2>/dev/null | grep -E "SHA1:|SHA-1:" || true
+
+          else
+            echo "⚠️ debug.keystore was not found."
+            echo "APK build succeeded, so continuing to APK upload."
+          fi
+
+          echo "=================================================================="
+
+      # Upload generated APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PixelDialer-debug
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
