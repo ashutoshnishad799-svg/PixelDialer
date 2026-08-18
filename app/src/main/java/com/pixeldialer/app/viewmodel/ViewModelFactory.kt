@@ -12,7 +12,10 @@ class ViewModelFactory(private val app: PixelDialerApp) : ViewModelProvider.Fact
                 app.callLogRepository,
                 app.systemCallLogRepository,
                 app.contactsRepository,
-                app.themePreference
+                app.themePreference,
+                app.appSettingsRepository,
+                app.authRepository,
+                app.cloudBackupRepository
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: $modelClass")

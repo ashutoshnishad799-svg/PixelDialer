@@ -35,6 +35,7 @@ private val recentFilters = listOf("All", "Missed", "Contacts", "Identified", "S
 @Composable
 fun RecentsScreen(
     recents: List<RecentCall>,
+    currentThemeId: String,
     onOpenThemePicker: () -> Unit,
     onCall: (RecentCall) -> Unit,
     modifier: Modifier = Modifier
@@ -63,7 +64,7 @@ fun RecentsScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = palette.textPrimary
             )
-            ThemePickerButton(onClick = onOpenThemePicker)
+            ThemePickerButton(onClick = onOpenThemePicker, currentThemeId = currentThemeId)
         }
 
         Row(

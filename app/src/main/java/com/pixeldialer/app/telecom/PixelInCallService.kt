@@ -9,29 +9,44 @@ import android.util.Log
  * Required system service for a default dialer app.
  * Android's Telecom framework binds to this service and hands us Call objects
  * for every incoming/outgoing call once this app is set as the default dialer.
+ *
+ * Tracks *all* simultaneous calls (not just one) so that "Add call" and
+ * "Merge calls" (conference calling) work — a second call coming in while
+ * one is active is a completely normal scenario a real dialer must handle.
  */
 class PixelInCallService : InCallService() {
 
     companion object {
         private const val TAG = "PixelInCallService"
 
-        // Holds the currently active call so the UI layer (InCallActivity) can read/control it.
-        var currentCall: Call? = null
-            private set
+        private val _allCalls = mutableListOf<Call>()
+        val allCalls: List<Call> get() = _allCalls.toList()
 
-        private val listeners = mutableListOf<(Call?) -> Unit>()
+        /** The call the UI should currently render as "primary" — ringing takes priority, then active, then whatever's first. */
+        val currentCall: Call?
+            get() = _allCalls.firstOrNull { it.state == Call.STATE_RINGING }
+                ?: _allCalls.firstOrNull { it.state == Call.STATE_ACTIVE }
+                ?: _allCalls.firstOrNull()
 
-        fun addCallListener(listener: (Call?) -> Unit) {
+        /** Any call other than the current primary one — surfaced in the UI as "the other call" for merge/swap. */
+        val secondaryCall: Call?
+            get() = _allCalls.firstOrNull { it != currentCall }
+
+        val hasMultipleCalls: Boolean get() = _allCalls.size > 1
+
+        private val listeners = mutableListOf<() -> Unit>()
+
+        fun addCallListener(listener: () -> Unit) {
             listeners.add(listener)
-            listener(currentCall)
+            listener()
         }
 
-        fun removeCallListener(listener: (Call?) -> Unit) {
+        fun removeCallListener(listener: () -> Unit) {
             listeners.remove(listener)
         }
 
         private fun notifyListeners() {
-            listeners.forEach { it(currentCall) }
+            listeners.forEach { it() }
         }
     }
 
@@ -40,40 +55,48 @@ class PixelInCallService : InCallService() {
             super.onStateChanged(call, state)
             Log.d(TAG, "Call state changed: $state")
             notifyListeners()
-            handleStateForNotification(call, state)
+            try {
+                handleStateForNotification(call, state)
+            } catch (e: Exception) {
+                Log.e(TAG, "Notification handling failed on state change", e)
+            }
             if (state == Call.STATE_DISCONNECTED) {
                 call.unregisterCallback(this)
-                CallNotificationHelper.clear(applicationContext)
             }
         }
     }
 
     override fun onCallAdded(call: Call) {
         super.onCallAdded(call)
-        Log.d(TAG, "Call added: ${call.details.handle}, state=${call.state}")
-        currentCall = call
+        Log.d(TAG, "Call added: ${call.details.handle}, state=${call.state}, totalCalls=${_allCalls.size + 1}")
+        _allCalls.add(call)
         call.registerCallback(callCallback)
         notifyListeners()
 
-        // Always launch via the full-screen notification path, not a bare
-        // startActivity() — that call silently fails from a background
-        // service on Android 10+ (screen off / app backgrounded), which
-        // was the root cause of the "no ring UI, only vibration, answer
-        // button does nothing" bug: the InCallActivity was simply never
-        // opening in those situations.
-        handleStateForNotification(call, call.state)
+        // Fire the notification FIRST — it's the guaranteed-to-work path
+        // (full-screen intent reliably wakes the screen even when this
+        // service is backgrounded). The direct startActivity() below is
+        // a same-process fast-path that works when we're already
+        // foregrounded, layered on top rather than relied on alone.
+        // Both are wrapped so a rendering/launch failure here can never
+        // bring down the whole service (and with it, calling ability).
+        try {
+            handleStateForNotification(call, call.state)
+        } catch (e: Exception) {
+            Log.e(TAG, "Notification handling failed for new call", e)
+        }
         launchInCallUi()
     }
 
     override fun onCallRemoved(call: Call) {
         super.onCallRemoved(call)
-        Log.d(TAG, "Call removed")
+        Log.d(TAG, "Call removed, remaining=${_allCalls.size - 1}")
         call.unregisterCallback(callCallback)
-        if (currentCall == call) {
-            currentCall = null
-        }
+        _allCalls.remove(call)
         notifyListeners()
-        CallNotificationHelper.clear(applicationContext)
+        if (_allCalls.isEmpty()) {
+            CallNotificationHelper.clear(applicationContext)
+        }
     }
 
     private fun handleStateForNotification(call: Call, state: Int) {
@@ -88,7 +111,7 @@ class PixelInCallService : InCallService() {
                 CallNotificationHelper.showOngoingCallNotification(applicationContext, name)
             }
             Call.STATE_DISCONNECTED -> {
-                CallNotificationHelper.clear(applicationContext)
+                if (_allCalls.size <= 1) CallNotificationHelper.clear(applicationContext)
             }
         }
     }
@@ -123,5 +146,26 @@ class PixelInCallService : InCallService() {
         currentCall?.let {
             if (it.state == Call.STATE_HOLDING) it.unhold() else it.hold()
         }
+    }
+
+    /** Swaps which of the two simultaneous calls is active/on-hold — the standard "swap calls" action. */
+    fun swapCalls() {
+        val primary = currentCall ?: return
+        val secondary = secondaryCall ?: return
+        primary.hold()
+        secondary.unhold()
+    }
+
+    /**
+     * Merges the two current calls into a conference — the standard
+     * "Merge calls" action found in every stock dialer. Requires the
+     * carrier/connection service to support conferencing; if it doesn't,
+     * this is a no-op from the Telecom framework's side (nothing to catch
+     * here — Call.conference() itself doesn't throw, it just won't merge).
+     */
+    fun mergeCalls() {
+        val primary = currentCall ?: return
+        val secondary = secondaryCall ?: return
+        primary.conference(secondary)
     }
 }

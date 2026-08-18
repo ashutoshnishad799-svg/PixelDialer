@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pixeldialer.app.ui.theme.AUTO_THEME_ID
 import com.pixeldialer.app.ui.theme.AllPalettes
 import com.pixeldialer.app.ui.theme.LocalDialerPalette
 
@@ -30,9 +32,11 @@ import com.pixeldialer.app.ui.theme.LocalDialerPalette
 @Composable
 fun ThemePickerButton(
     onClick: () -> Unit,
+    currentThemeId: String = "",
     modifier: Modifier = Modifier
 ) {
     val palette = LocalDialerPalette.current
+    val label = if (currentThemeId == AUTO_THEME_ID) "System" else palette.displayName
 
     OutlinedButton(
         onClick = onClick,
@@ -49,7 +53,7 @@ fun ThemePickerButton(
             modifier = Modifier.size(16.dp)
         )
         Spacer(Modifier.width(6.dp))
-        Text(text = palette.displayName, color = palette.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = label, color = palette.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -80,8 +84,42 @@ fun ThemePickerSheet(
                 columns = GridCells.Fixed(3),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.height(240.dp)
+                modifier = Modifier.height(320.dp)
             ) {
+                item {
+                    val isSelected = currentThemeId == AUTO_THEME_ID
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable { onSelect(AUTO_THEME_ID) }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(palette.textSecondary.copy(alpha = 0.35f), palette.textPrimary.copy(alpha = 0.55f))
+                                    )
+                                )
+                                .border(
+                                    width = if (isSelected) 3.dp else 0.dp,
+                                    color = if (isSelected) palette.accent else Color.Transparent,
+                                    shape = CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Filled.SettingsBrightness, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "System",
+                            fontSize = 12.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = palette.textPrimary
+                        )
+                    }
+                }
+
                 items(AllPalettes) { p ->
                     val isSelected = p.id == currentThemeId
                     Column(

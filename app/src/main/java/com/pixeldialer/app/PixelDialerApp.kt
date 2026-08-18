@@ -4,11 +4,16 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.pixeldialer.app.data.AppSettingsRepository
+import com.pixeldialer.app.data.AuthRepository
 import com.pixeldialer.app.data.CallLogRepository
+import com.pixeldialer.app.data.CloudBackupRepository
 import com.pixeldialer.app.data.ContactsRepository
 import com.pixeldialer.app.data.SystemCallLogRepository
 import com.pixeldialer.app.data.ThemePreference
 import com.pixeldialer.app.data.db.PixelDialerDatabase
+import com.pixeldialer.app.telecom.CallNotificationHelper
+import com.pixeldialer.app.telecom.CallRecorder
 
 class PixelDialerApp : Application() {
 
@@ -22,6 +27,14 @@ class PixelDialerApp : Application() {
         private set
     lateinit var themePreference: ThemePreference
         private set
+    lateinit var appSettingsRepository: AppSettingsRepository
+        private set
+    lateinit var callRecorder: CallRecorder
+        private set
+    lateinit var authRepository: AuthRepository
+        private set
+    lateinit var cloudBackupRepository: CloudBackupRepository
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -30,7 +43,13 @@ class PixelDialerApp : Application() {
         systemCallLogRepository = SystemCallLogRepository(this)
         contactsRepository = ContactsRepository(this)
         themePreference = ThemePreference(this)
+        appSettingsRepository = AppSettingsRepository(this)
+        callRecorder = CallRecorder(this)
+        authRepository = AuthRepository(this)
+        cloudBackupRepository = CloudBackupRepository()
         createNotificationChannels()
+        // Pre-create the incoming-call channel too, so it isn't a first-call cost.
+        CallNotificationHelper.createChannels(this)
     }
 
     private fun createNotificationChannels() {

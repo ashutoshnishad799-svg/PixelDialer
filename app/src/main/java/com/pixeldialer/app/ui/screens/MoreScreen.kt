@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.pixeldialer.app.ui.theme.LocalDialerPalette
 
 private val menuItems = listOf(
-    "Appearance", "Settings", "Blocked numbers", "Call recording", "Voicemail", "Set as default dialer", "Help & feedback"
+    "Account", "Appearance", "Settings", "Blocked numbers", "Call recording", "Voicemail", "Set as default dialer", "Help & feedback", "Privacy Policy"
 )
 
 @Composable

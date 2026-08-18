@@ -168,8 +168,30 @@ val RoseGoldPalette = DialerPalette(
     swatchEnd = Color(0xFFC96B6B)
 )
 
+/** 7. Dark Mode — pure AMOLED black, zero-gradient, battery-saving OLED style */
+val DarkModePalette = DialerPalette(
+    id = "darkmode",
+    displayName = "Dark Mode",
+    isDark = true,
+    background = Brush.verticalGradient(colors = listOf(Color(0xFF000000), Color(0xFF000000))),
+    solidBackground = Color(0xFF000000),
+    cardBackground = Color(0xFF121212),
+    cardBorder = Color(0xFF232323),
+    navBackground = Color(0xFF0A0A0A),
+    accent = Color(0xFF4FA8FF),
+    accentSoft = Color(0xFF12233A),
+    textPrimary = Color(0xFFFFFFFF),
+    textSecondary = Color(0xFF9A9A9A),
+    danger = Color(0xFFFF5449),
+    searchBackground = Color(0xFF121212),
+    avatarBackground = Color(0xFF232323),
+    callGreen = Color(0xFF34C759),
+    swatchStart = Color(0xFF000000),
+    swatchEnd = Color(0xFF4FA8FF)
+)
+
 val AllPalettes = listOf(
-    GradientPalette, OceanPalette, SunsetPalette, RoseGoldPalette, MidnightPalette, VioletPalette
+    GradientPalette, OceanPalette, SunsetPalette, RoseGoldPalette, MidnightPalette, VioletPalette, DarkModePalette
 )
 
 fun paletteById(id: String): DialerPalette = AllPalettes.find { it.id == id } ?: GradientPalette

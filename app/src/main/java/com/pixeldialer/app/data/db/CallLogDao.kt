@@ -13,6 +13,9 @@ interface CallLogDao {
     @Query("SELECT * FROM call_log ORDER BY timestampMillis DESC")
     fun observeAll(): Flow<List<CallLogEntity>>
 
+    @Query("SELECT * FROM call_log ORDER BY timestampMillis DESC LIMIT :limit")
+    suspend fun getRecentSnapshot(limit: Int): List<CallLogEntity>
+
     @Query("SELECT * FROM call_log WHERE direction = 'MISSED' ORDER BY timestampMillis DESC")
     fun observeMissed(): Flow<List<CallLogEntity>>
 

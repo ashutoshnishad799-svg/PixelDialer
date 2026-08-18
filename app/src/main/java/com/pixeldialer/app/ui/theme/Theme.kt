@@ -1,5 +1,6 @@
 package com.pixeldialer.app.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -12,6 +13,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 val LocalDialerPalette = compositionLocalOf { GradientPalette }
+
+/** Special theme id meaning "follow the system light/dark setting" instead of a fixed palette. */
+const val AUTO_THEME_ID = "auto"
 
 private val DialerTypography = Typography(
     headlineLarge = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, letterSpacing = (-0.5).sp),
@@ -27,7 +31,14 @@ fun PixelDialerTheme(
     themeId: String,
     content: @Composable () -> Unit
 ) {
-    val palette = paletteById(themeId)
+    val systemIsDark = isSystemInDarkTheme()
+    val resolvedId = if (themeId == AUTO_THEME_ID) {
+        if (systemIsDark) "darkmode" else "gradient"
+    } else {
+        themeId
+    }
+    val palette = paletteById(resolvedId)
+
     val scheme = if (palette.isDark) {
         darkColorScheme(
             primary = palette.accent,

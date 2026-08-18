@@ -173,7 +173,12 @@ fun DialerScreen(
                 )
             }
 
-            if (number.isNotEmpty()) {
+            AnimatedVisibility(
+                visible = number.isNotEmpty(),
+                modifier = Modifier.align(Alignment.CenterEnd),
+                enter = fadeIn() + scaleIn(initialScale = 0.7f),
+                exit = fadeOut() + scaleOut(targetScale = 0.7f)
+            ) {
                 IconButton(
                     onClick = { number = number.dropLast(1) },
                     modifier = Modifier.size(44.dp)
@@ -183,6 +188,8 @@ fun DialerScreen(
             }
         }
     }
+}
+
 @Composable
 private fun animateFloatSpring(target: Float) = androidx.compose.animation.core.animateFloatAsState(
     targetValue = target,

@@ -92,4 +92,25 @@ class CallLogRepository(private val dao: CallLogDao) {
     }
 
     suspend fun clearHistory() = dao.clearAll()
+
+    /** One-shot snapshot of the most recent entries, used when pushing a cloud backup. */
+    suspend fun rawEntriesForBackup(limit: Int = 500): List<CallLogEntity> =
+        dao.getRecentSnapshot(limit)
+
+    /**
+     * Replaces local call history with a restored cloud snapshot. Uses the
+     * same insertAll(IGNORE) path as the system-history sync, so entries
+     * that already exist locally (matching phoneNumber+timestampMillis)
+     * are left alone rather than duplicated — a restore is additive with
+     * respect to anything the device already logged since the backup.
+     */
+    suspend fun replaceAllFromBackup(entries: List<CallLogEntity>) {
+        if (entries.isEmpty()) return
+        // Room's @Insert autoGenerate primary key means passing entries with
+        // their remote `id` values would collide with local ids; strip them
+        // so each restored row gets a fresh local id and relies on the
+        // (phoneNumber, timestampMillis) unique index for de-duplication.
+        val withoutIds = entries.map { it.copy(id = 0) }
+        dao.insertAll(withoutIds)
+    }
 }

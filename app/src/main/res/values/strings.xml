@@ -8,7 +8,7 @@
     <string name="search_recent">Search Recent</string>
     <string name="today">Today</string>
     <string name="permissions_required_title">Permissions needed</string>
-    <string name="permissions_required_body">Pixel Dialer needs phone, contacts and call log access to work as your dialer.</string>
+    <string name="permissions_required_body">Ashu Phone needs phone, contacts and call log access to work as your dialer.</string>
     <string name="set_default_dialer">Set as default dialer</string>
     <string name="grant_permissions">Grant permissions</string>
 </resources>

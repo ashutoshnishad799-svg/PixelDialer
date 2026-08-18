@@ -44,13 +44,13 @@ fun PermissionsScreen(
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "Set up Pixel Dialer",
+            "Set up Ashu Phone",
             fontSize = 22.sp, fontWeight = FontWeight.Bold, color = palette.textPrimary,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "Pixel Dialer needs phone, contacts and call log access to work as your dialer.",
+            "Ashu Phone needs phone, contacts and call log access to work as your dialer.",
             fontSize = 14.sp, color = palette.textSecondary, textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(32.dp))
