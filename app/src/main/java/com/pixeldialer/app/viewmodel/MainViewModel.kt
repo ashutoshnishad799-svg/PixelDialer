@@ -31,7 +31,8 @@ class MainViewModel(
     private val themePreference: ThemePreference,
     private val appSettingsRepository: AppSettingsRepository,
     private val authRepository: AuthRepository,
-    private val cloudBackupRepository: CloudBackupRepository
+    private val cloudBackupRepository: CloudBackupRepository,
+    private val blockedNumberDao: com.pixeldialer.app.data.db.BlockedNumberDao
 ) : ViewModel() {
 
     val themeId: StateFlow<String> = themePreference.themeIdFlow
@@ -60,6 +61,18 @@ class MainViewModel(
 
     private val _lastBackedUpAtMillis = MutableStateFlow(0L)
     val lastBackedUpAtMillis: StateFlow<Long> = _lastBackedUpAtMillis
+
+    val blockedNumbers: StateFlow<List<BlockedNumberEntity>> = blockedNumberDao.observeAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun blockNumber(number: String) {
+        if (number.isBlank()) return
+        viewModelScope.launch { blockedNumberDao.block(BlockedNumberEntity(phoneNumber = number)) }
+    }
+
+    fun unblockNumber(entry: BlockedNumberEntity) {
+        viewModelScope.launch { blockedNumberDao.unblock(entry) }
+    }
 
     fun setTheme(id: String) {
         viewModelScope.launch {
@@ -144,7 +157,7 @@ class MainViewModel(
         viewModelScope.launch {
             _backupState.value = BackupState.IN_PROGRESS
             val callLog: List<CallLogEntity> = callLogRepository.rawEntriesForBackup()
-            val blocked: List<BlockedNumberEntity> = emptyList()
+            val blocked: List<BlockedNumberEntity> = blockedNumbers.value
             val result = cloudBackupRepository.backup(uid, callLog, blocked, themeId.value)
             when (result) {
                 is BackupResult.Success -> {

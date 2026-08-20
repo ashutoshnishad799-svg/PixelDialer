@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -58,6 +60,7 @@ private fun normalizeForMatch(raw: String): String {
 fun DialerScreen(
     contacts: List<Contact>,
     onCall: (String) -> Unit,
+    onAddContact: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val palette = LocalDialerPalette.current
@@ -79,6 +82,12 @@ fun DialerScreen(
         }
     }
 
+    // Once the typed number is long enough to plausibly be a real number
+    // and doesn't match anyone saved, offer to save it — same threshold
+    // logic stock dialers use (too short and every partial dial would
+    // flash the prompt pointlessly).
+    val showAddContactHint = number.length >= 5 && matchedContact == null
+
     fun vibrate() {
         val vibrator = context.getSystemService(Vibrator::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -86,9 +95,17 @@ fun DialerScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+    // Everything sits inside one bottom-weighted Column instead of the keypad
+    // being centered in leftover space — that centering was exactly what
+    // created the large empty gap between the number display and the keys
+    // seen in the "spacing looks off" feedback. Fixed small top padding,
+    // then keys immediately below, then the call button hugging the bottom.
+    Column(
+        modifier = modifier.fillMaxSize().padding(horizontal = 28.dp),
+        verticalArrangement = Arrangement.Bottom
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(top = 14.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(top = 10.dp, bottom = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -107,7 +124,7 @@ fun DialerScreen(
                 matchedContact?.let { contact ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 6.dp)
                     ) {
                         Avatar(name = contact.displayName, photoUri = contact.photoUri, size = 22.dp)
                         Spacer(Modifier.width(6.dp))
@@ -120,15 +137,39 @@ fun DialerScreen(
                     }
                 }
             }
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showAddContactHint,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }) + scaleIn(initialScale = 0.85f),
+                exit = fadeOut() + scaleOut(targetScale = 0.85f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(palette.accentSoft)
+                        .clickable { onAddContact(number) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = palette.accent, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Add to Contacts",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = palette.accent
+                    )
+                }
+            }
         }
 
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
-        ) {
+        Spacer(Modifier.weight(1f, fill = true).heightIn(max = 24.dp))
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             keys.chunked(3).forEach { row ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     row.forEach { key ->
@@ -147,7 +188,7 @@ fun DialerScreen(
         }
 
         Box(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             val callInteractionSource = remember { MutableInteractionSource() }
@@ -162,12 +203,12 @@ fun DialerScreen(
                     .size(62.dp)
                     .scale(callScale)
                     .clip(CircleShape)
-                    .background(if (number.isNotEmpty()) palette.callGreen else palette.cardBackground)
+                    .background(palette.callGreen)
             ) {
                 Icon(
                     Icons.Filled.Phone,
                     contentDescription = "Call",
-                    tint = if (number.isNotEmpty()) Color.White else palette.textSecondary,
+                    tint = Color.White,
                     modifier = Modifier.size(26.dp)
                 )
             }
@@ -208,7 +249,7 @@ private fun DialerKey(
 
     Box(
         modifier = Modifier
-            .size(64.dp)
+            .size(70.dp)
             .scale(scale)
             .clip(CircleShape)
             .background(palette.cardBackground)
@@ -221,10 +262,10 @@ private fun DialerKey(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(key.digit, fontSize = 26.sp, fontWeight = FontWeight.Normal, color = palette.textPrimary)
+            Text(key.digit, fontSize = 28.sp, fontWeight = FontWeight.Normal, color = palette.textPrimary)
             if (key.letters.isNotEmpty()) {
                 Text(
-                    key.letters, fontSize = 8.5.sp, fontWeight = FontWeight.Bold,
+                    key.letters, fontSize = 9.sp, fontWeight = FontWeight.Bold,
                     color = palette.textSecondary, letterSpacing = 1.2.sp
                 )
             }

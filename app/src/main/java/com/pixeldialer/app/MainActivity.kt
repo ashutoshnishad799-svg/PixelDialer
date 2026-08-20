@@ -35,8 +35,9 @@ import com.pixeldialer.app.ui.theme.LocalDialerPalette
 import com.pixeldialer.app.ui.theme.PixelDialerTheme
 import com.pixeldialer.app.viewmodel.MainViewModel
 import com.pixeldialer.app.viewmodel.ViewModelFactory
+import kotlinx.coroutines.launch
 
-private enum class OverlayScreen { NONE, ACCOUNT, PRIVACY_POLICY }
+private enum class OverlayScreen { NONE, ACCOUNT, PRIVACY_POLICY, SETTINGS, BLOCKED_NUMBERS, HELP_FEEDBACK }
 
 class MainActivity : ComponentActivity() {
 
@@ -57,9 +58,13 @@ class MainActivity : ComponentActivity() {
             val settings by viewModel.settings.collectAsState()
             val backupState by viewModel.backupState.collectAsState()
             val lastBackedUpAt by viewModel.lastBackedUpAtMillis.collectAsState()
+            val blockedNumbers by viewModel.blockedNumbers.collectAsState()
 
             var hasPermissions by remember { mutableStateOf(DialerPermissions.hasAll(context)) }
             var isDefaultDialer by remember { mutableStateOf(DialerPermissions.isDefaultDialer(context)) }
+            val app = context.applicationContext as PixelDialerApp
+            val onboardingComplete by app.onboardingPreference.isCompleteFlow.collectAsState(initial = null)
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
             var selectedTab by remember { mutableStateOf(DialerTab.RECENT) }
             var showThemePicker by remember { mutableStateOf(false) }
             var overlay by remember { mutableStateOf(OverlayScreen.NONE) }
@@ -108,7 +113,12 @@ class MainActivity : ComponentActivity() {
             PixelDialerTheme(themeId = themeId) {
                 val palette = LocalDialerPalette.current
 
-                if (!hasPermissions || !isDefaultDialer) {
+                if (onboardingComplete == false) {
+                    OnboardingScreen(
+                        onFinished = { scope.launch { app.onboardingPreference.markComplete() } },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (!hasPermissions || !isDefaultDialer) {
                     Box(modifier = Modifier.fillMaxSize().background(palette.background)) {
                         PermissionsScreen(
                             isDefaultDialer = isDefaultDialer,
@@ -140,7 +150,18 @@ class MainActivity : ComponentActivity() {
                         ) {
                             AnimatedContent(
                                 targetState = selectedTab,
-                                transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                transitionSpec = {
+                                    val forward = targetState.ordinal > initialState.ordinal
+                                    val slideDistance = { fullWidth: Int -> fullWidth / 6 }
+                                    (fadeIn(tween(220)) + slideInHorizontally(
+                                        animationSpec = tween(220),
+                                        initialOffsetX = { w -> if (forward) slideDistance(w) else -slideDistance(w) }
+                                    )) togetherWith
+                                        (fadeOut(tween(140)) + slideOutHorizontally(
+                                            animationSpec = tween(140),
+                                            targetOffsetX = { w -> if (forward) -slideDistance(w) else slideDistance(w) }
+                                        ))
+                                },
                                 label = "tab-content"
                             ) { tab ->
                                 when (tab) {
@@ -163,7 +184,8 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     DialerTab.PROTECT -> ProtectScreen(
-                                        blockedNumbers = emptyList(),
+                                        blockedNumbers = blockedNumbers,
+                                        onOpenBlockedNumbers = { overlay = OverlayScreen.BLOCKED_NUMBERS },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     DialerTab.MORE -> MoreScreen(
@@ -175,6 +197,10 @@ class MainActivity : ComponentActivity() {
                                                 "Appearance" -> showThemePicker = true
                                                 "Account" -> overlay = OverlayScreen.ACCOUNT
                                                 "Privacy Policy" -> overlay = OverlayScreen.PRIVACY_POLICY
+                                                "Settings" -> overlay = OverlayScreen.SETTINGS
+                                                "Blocked numbers" -> overlay = OverlayScreen.BLOCKED_NUMBERS
+                                                "Help & feedback" -> overlay = OverlayScreen.HELP_FEEDBACK
+                                                "Voicemail" -> DialerPermissions.callVoicemail(context)
                                             }
                                         },
                                         modifier = Modifier.fillMaxSize()
@@ -233,6 +259,25 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier.fillMaxSize()
                                         )
                                         OverlayScreen.PRIVACY_POLICY -> PrivacyPolicyScreen(
+                                            onBack = { overlay = OverlayScreen.NONE },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        OverlayScreen.SETTINGS -> SettingsScreen(
+                                            settings = settings,
+                                            onBack = { overlay = OverlayScreen.NONE },
+                                            onOpenAppearance = { showThemePicker = true },
+                                            onToggleCallRecording = { enabled -> viewModel.setCallRecordingEnabled(enabled) },
+                                            onToggleAutoRecordAll = { enabled -> viewModel.setAutoRecordAll(enabled) },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        OverlayScreen.BLOCKED_NUMBERS -> BlockedNumbersScreen(
+                                            blockedNumbers = blockedNumbers,
+                                            onBack = { overlay = OverlayScreen.NONE },
+                                            onBlock = { number -> viewModel.blockNumber(number) },
+                                            onUnblock = { entry -> viewModel.unblockNumber(entry) },
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                        OverlayScreen.HELP_FEEDBACK -> HelpFeedbackScreen(
                                             onBack = { overlay = OverlayScreen.NONE },
                                             modifier = Modifier.fillMaxSize()
                                         )

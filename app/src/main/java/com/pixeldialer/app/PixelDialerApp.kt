@@ -35,6 +35,8 @@ class PixelDialerApp : Application() {
         private set
     lateinit var cloudBackupRepository: CloudBackupRepository
         private set
+    lateinit var onboardingPreference: com.pixeldialer.app.data.OnboardingPreference
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -47,6 +49,7 @@ class PixelDialerApp : Application() {
         callRecorder = CallRecorder(this)
         authRepository = AuthRepository(this)
         cloudBackupRepository = CloudBackupRepository()
+        onboardingPreference = com.pixeldialer.app.data.OnboardingPreference(this)
         createNotificationChannels()
         // Pre-create the incoming-call channel too, so it isn't a first-call cost.
         CallNotificationHelper.createChannels(this)

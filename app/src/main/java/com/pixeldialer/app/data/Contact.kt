@@ -2,8 +2,10 @@ package com.pixeldialer.app.data
 
 data class Contact(
     val id: String,
+    val contactId: String = id,
     val displayName: String,
     val phoneNumber: String,
+    val numberLabel: String = "Mobile",
     val photoUri: String? = null,
     val isFavorite: Boolean = false
 )

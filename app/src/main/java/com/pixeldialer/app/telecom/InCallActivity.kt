@@ -29,6 +29,7 @@ class InCallActivity : ComponentActivity() {
             val settings by app.appSettingsRepository.settingsFlow.collectAsState(initial = AppSettings())
 
             var call by remember { mutableStateOf(PixelInCallService.currentCall) }
+            var callState by remember { mutableStateOf(call?.state) }
             var hasSecondCall by remember { mutableStateOf(PixelInCallService.hasMultipleCalls) }
             var isRecording by remember { mutableStateOf(false) }
             var recordingMode by remember { mutableStateOf<RecordingMode?>(null) }
@@ -40,6 +41,7 @@ class InCallActivity : ComponentActivity() {
             DisposableEffect(Unit) {
                 val listener: () -> Unit = {
                     call = PixelInCallService.currentCall
+                    callState = call?.state
                     hasSecondCall = PixelInCallService.hasMultipleCalls
                     // Bluetooth/headset can connect or disconnect mid-call —
                     // re-check available routes on every call-state change
@@ -49,6 +51,22 @@ class InCallActivity : ComponentActivity() {
                 }
                 PixelInCallService.addCallListener(listener)
                 onDispose { PixelInCallService.removeCallListener(listener) }
+            }
+
+            // Safety net alongside the listener above: Call.Callback events
+            // are normally reliable, but if one is ever missed (e.g. a
+            // rapid ringing→active transition landing between recompositions),
+            // this catches the displayed state drifting from the real one
+            // within a second rather than leaving the screen stuck showing
+            // "ringing" for an already-answered call.
+            LaunchedEffect(call) {
+                while (call != null) {
+                    kotlinx.coroutines.delay(500)
+                    val liveState = call?.state
+                    if (liveState != null && liveState != callState) {
+                        callState = liveState
+                    }
+                }
             }
 
             // No active call left — the InCallService already tore this down; close the screen.
@@ -78,9 +96,15 @@ class InCallActivity : ComponentActivity() {
                 val current = call
                 if (current != null) {
                     val number = current.details?.handle?.schemeSpecificPart ?: "Unknown"
-                    val displayName = current.details?.callerDisplayName?.takeIf { it.isNotBlank() } ?: number
+                    val rawCallerDisplayName = current.details?.callerDisplayName?.takeIf { it.isNotBlank() }
+                    val displayName = rawCallerDisplayName ?: number
+                    // A non-blank callerDisplayName means Telecom matched this
+                    // number to a saved contact — that's what drives whether
+                    // the call screen shows a name+initial or a plain number
+                    // with a generic person icon (no digit read as an "initial").
+                    val isSavedContact = rawCallerDisplayName != null
 
-                    when (current.state) {
+                    when (callState) {
                         Call.STATE_RINGING -> {
                             IncomingCallScreen(
                                 callerName = displayName,
@@ -94,7 +118,12 @@ class InCallActivity : ComponentActivity() {
                                 },
                                 onDecline = {
                                     current.reject(false, null)
-                                    logCallAsync(app, number, displayName, CallDirection.MISSED)
+                                    // No manual missed-call log here — PixelInCallService
+                                    // already logs missed calls at STATE_DISCONNECTED
+                                    // regardless of whether this screen was ever open
+                                    // (needed for the screen-on notification-only path,
+                                    // where the activity may not exist at all). Logging
+                                    // it again here would create a duplicate Recents entry.
                                     finish()
                                 }
                             )
@@ -103,6 +132,7 @@ class InCallActivity : ComponentActivity() {
                             CallScreen(
                                 callerName = displayName,
                                 callerNumber = number,
+                                isSavedContact = isSavedContact,
                                 canMerge = hasSecondCall,
                                 recordingAvailable = settings.callRecordingEnabled,
                                 isRecording = isRecording,

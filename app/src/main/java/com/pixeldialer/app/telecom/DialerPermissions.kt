@@ -18,6 +18,7 @@ object DialerPermissions {
         add(Manifest.permission.READ_CALL_LOG)
         add(Manifest.permission.WRITE_CALL_LOG)
         add(Manifest.permission.READ_CONTACTS)
+        add(Manifest.permission.WRITE_CONTACTS)
         add(Manifest.permission.ANSWER_PHONE_CALLS)
         add(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -74,6 +75,26 @@ object DialerPermissions {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)
+        }
+    }
+
+    /**
+     * Dials the carrier's voicemail box using the "voicemail:" URI scheme —
+     * Android/the carrier resolves this to the actual voicemail number
+     * itself, which varies by carrier and SIM and isn't something an app
+     * can know or hardcode. This is the standard way every dialer (stock
+     * or third-party) implements a "Voicemail" button without needing
+     * carrier-specific integration.
+     */
+    fun callVoicemail(context: Context) {
+        val intent = Intent(Intent.ACTION_CALL, Uri.parse("voicemail:")).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // No voicemail number configured on this SIM/carrier — nothing
+            // sensible to do beyond not crashing.
         }
     }
 }
