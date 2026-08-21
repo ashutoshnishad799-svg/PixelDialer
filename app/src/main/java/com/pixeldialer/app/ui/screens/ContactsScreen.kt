@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -313,6 +315,20 @@ private fun PersonRow(
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Filled.Star, contentDescription = "Favorite", tint = palette.accent, modifier = Modifier.size(14.dp))
                 }
+                // Rotating chevron makes it visually clear this row is
+                // expandable — without any indicator, "2 numbers" as plain
+                // grey text didn't read as a tap target, so the second/
+                // third number effectively looked missing rather than
+                // just collapsed.
+                Icon(
+                    Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Collapse numbers" else "Expand numbers",
+                    tint = palette.textSecondary,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .padding(start = 4.dp)
+                        .rotate(if (expanded) 180f else 0f)
+                )
             }
             AnimatedVisibility(visible = expanded, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 Column(modifier = Modifier.padding(start = 52.dp, bottom = 4.dp)) {

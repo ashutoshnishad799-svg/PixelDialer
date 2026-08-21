@@ -152,13 +152,19 @@ class MainActivity : ComponentActivity() {
                                 targetState = selectedTab,
                                 transitionSpec = {
                                     val forward = targetState.ordinal > initialState.ordinal
-                                    val slideDistance = { fullWidth: Int -> fullWidth / 6 }
-                                    (fadeIn(tween(220)) + slideInHorizontally(
-                                        animationSpec = tween(220),
+                                    // Smaller slide distance + shorter duration than the
+                                    // original: the Dialer tab's 12-key grid (each key
+                                    // tracking its own press-scale animateFloatAsState)
+                                    // composing at the same moment as a larger slide
+                                    // distance was heavy enough on slower devices to read
+                                    // as the tab-switch animation stalling/jerking.
+                                    val slideDistance = { fullWidth: Int -> fullWidth / 10 }
+                                    (fadeIn(tween(160)) + slideInHorizontally(
+                                        animationSpec = tween(160),
                                         initialOffsetX = { w -> if (forward) slideDistance(w) else -slideDistance(w) }
                                     )) togetherWith
-                                        (fadeOut(tween(140)) + slideOutHorizontally(
-                                            animationSpec = tween(140),
+                                        (fadeOut(tween(110)) + slideOutHorizontally(
+                                            animationSpec = tween(110),
                                             targetOffsetX = { w -> if (forward) -slideDistance(w) else slideDistance(w) }
                                         ))
                                 },

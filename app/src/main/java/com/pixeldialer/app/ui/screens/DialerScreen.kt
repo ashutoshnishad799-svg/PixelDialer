@@ -233,7 +233,11 @@ fun DialerScreen(
 @Composable
 private fun animateFloatSpring(target: Float) = androidx.compose.animation.core.animateFloatAsState(
     targetValue = target,
-    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+    // StiffnessMedium settles noticeably faster than the previous
+    // StiffnessLow — fewer animated frames per key-press, which matters
+    // when up to 12 of these can be live at once right as a tab-switch
+    // slide/fade is also animating in.
+    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
     label = "press-scale"
 )
 
