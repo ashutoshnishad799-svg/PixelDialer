@@ -211,6 +211,7 @@ class PixelInCallService : InCallService() {
 
     private fun vibrateForIncomingCall() {
         try {
+<<<<<<< HEAD
             // Android's Telecom framework already plays the actual ringtone
             // itself for a registered InCallService — this method only
             // supplements it with an app-level vibrate cue. It must still
@@ -220,6 +221,8 @@ class PixelInCallService : InCallService() {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
             if (audioManager?.ringerMode == android.media.AudioManager.RINGER_MODE_SILENT) return
 
+=======
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
             val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
             vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300), -1))
         } catch (e: Exception) {

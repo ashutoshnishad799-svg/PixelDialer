@@ -23,6 +23,10 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+<<<<<<< HEAD
+=======
+import androidx.compose.runtime.getValue
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier

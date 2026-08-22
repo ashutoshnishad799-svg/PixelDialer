@@ -73,6 +73,7 @@ fun DialerScreen(
     }
 
     // Live contact match — updates as the user types, like a stock dialer.
+<<<<<<< HEAD
     // Threshold raised from 3 to 6 digits, and the matching itself tightened
     // to require the SHORTER number to be a suffix of the LONGER one (not
     // "either endsWith the other" both ways) — the old three-digit
@@ -89,6 +90,14 @@ fun DialerScreen(
             if (candidate.isEmpty()) return@firstOrNull false
             val (shorter, longer) = if (candidate.length <= target.length) candidate to target else target to candidate
             shorter.length >= 6 && longer.endsWith(shorter)
+=======
+    val matchedContact = remember(number, contacts) {
+        if (number.length < 3) return@remember null
+        val target = normalizeForMatch(number)
+        contacts.firstOrNull { c ->
+            val candidate = normalizeForMatch(c.phoneNumber)
+            candidate.isNotEmpty() && (candidate == target || candidate.endsWith(target) || target.endsWith(candidate))
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
         }
     }
 
@@ -96,6 +105,7 @@ fun DialerScreen(
     // and doesn't match anyone saved, offer to save it — same threshold
     // logic stock dialers use (too short and every partial dial would
     // flash the prompt pointlessly).
+<<<<<<< HEAD
     val showAddContactHint = number.length >= 6 && matchedContact == null
 
     // Key-press feedback now respects the device's actual ringer mode
@@ -110,12 +120,18 @@ fun DialerScreen(
 
     fun vibrate() {
         if (currentRingerMode() == android.media.AudioManager.RINGER_MODE_SILENT) return
+=======
+    val showAddContactHint = number.length >= 5 && matchedContact == null
+
+    fun vibrate() {
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
         val vibrator = context.getSystemService(Vibrator::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator?.vibrate(VibrationEffect.createOneShot(8, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
 
+<<<<<<< HEAD
     fun playDtmfIfAllowed(digit: Char) {
         if (currentRingerMode() == android.media.AudioManager.RINGER_MODE_NORMAL) {
             dtmfPlayer.play(digit)
@@ -124,6 +140,8 @@ fun DialerScreen(
         // vibrate() above still fires its own haptic in vibrate mode.
     }
 
+=======
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
     // Everything sits inside one bottom-weighted Column instead of the keypad
     // being centered in leftover space — that centering was exactly what
     // created the large empty gap between the number display and the keys
@@ -139,7 +157,11 @@ fun DialerScreen(
         ) {
             Text(
                 text = number,
+<<<<<<< HEAD
                 fontSize = if (number.length > 10) 32.sp else 42.sp,
+=======
+                fontSize = if (number.length > 10) 28.sp else 34.sp,
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                 fontWeight = FontWeight.Light,
                 color = palette.textPrimary,
                 textAlign = TextAlign.Center
@@ -207,7 +229,11 @@ fun DialerScreen(
                             palette = palette,
                             onPress = {
                                 number += key.digit
+<<<<<<< HEAD
                                 playDtmfIfAllowed(key.digit.first())
+=======
+                                dtmfPlayer.play(key.digit.first())
+>>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                                 vibrate()
                             }
                         )
