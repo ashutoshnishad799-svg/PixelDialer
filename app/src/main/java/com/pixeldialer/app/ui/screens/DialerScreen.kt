@@ -13,6 +13,9 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -27,9 +30,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +44,8 @@ import com.pixeldialer.app.data.Contact
 import com.pixeldialer.app.telecom.DtmfPlayer
 import com.pixeldialer.app.ui.components.Avatar
 import com.pixeldialer.app.ui.theme.LocalDialerPalette
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 
 private data class KeyDef(val digit: String, val letters: String)
 
@@ -73,31 +80,12 @@ fun DialerScreen(
     }
 
     // Live contact match — updates as the user types, like a stock dialer.
-<<<<<<< HEAD
-    // Threshold raised from 3 to 6 digits, and the matching itself tightened
-    // to require the SHORTER number to be a suffix of the LONGER one (not
-    // "either endsWith the other" both ways) — the old three-digit
-    // threshold combined with loose endsWith-either-direction matching was
-    // locking onto unrelated contacts whose number happened to share a
-    // short digit run, which is what made "wrong name" and "no name at all
-    // for someone who IS saved" both show up depending on which contact the
-    // loose match landed on first.
-    val matchedContact = remember(number, contacts) {
-        val target = normalizeForMatch(number)
-        if (target.length < 6) return@remember null
-        contacts.firstOrNull { c ->
-            val candidate = normalizeForMatch(c.phoneNumber)
-            if (candidate.isEmpty()) return@firstOrNull false
-            val (shorter, longer) = if (candidate.length <= target.length) candidate to target else target to candidate
-            shorter.length >= 6 && longer.endsWith(shorter)
-=======
     val matchedContact = remember(number, contacts) {
         if (number.length < 3) return@remember null
         val target = normalizeForMatch(number)
         contacts.firstOrNull { c ->
             val candidate = normalizeForMatch(c.phoneNumber)
             candidate.isNotEmpty() && (candidate == target || candidate.endsWith(target) || target.endsWith(candidate))
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
         }
     }
 
@@ -105,43 +93,15 @@ fun DialerScreen(
     // and doesn't match anyone saved, offer to save it — same threshold
     // logic stock dialers use (too short and every partial dial would
     // flash the prompt pointlessly).
-<<<<<<< HEAD
-    val showAddContactHint = number.length >= 6 && matchedContact == null
-
-    // Key-press feedback now respects the device's actual ringer mode
-    // instead of always vibrating + always playing a tone — RINGER_MODE_SILENT
-    // suppresses both, RINGER_MODE_VIBRATE gives haptic only, and normal
-    // ring mode gives both tone and haptic, matching what every stock
-    // dialer does and what was specifically asked for here.
-    fun currentRingerMode(): Int {
-        val audioManager = context.getSystemService(android.media.AudioManager::class.java)
-        return audioManager?.ringerMode ?: android.media.AudioManager.RINGER_MODE_NORMAL
-    }
-
-    fun vibrate() {
-        if (currentRingerMode() == android.media.AudioManager.RINGER_MODE_SILENT) return
-=======
     val showAddContactHint = number.length >= 5 && matchedContact == null
 
     fun vibrate() {
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
         val vibrator = context.getSystemService(Vibrator::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator?.vibrate(VibrationEffect.createOneShot(8, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
 
-<<<<<<< HEAD
-    fun playDtmfIfAllowed(digit: Char) {
-        if (currentRingerMode() == android.media.AudioManager.RINGER_MODE_NORMAL) {
-            dtmfPlayer.play(digit)
-        }
-        // Silent and vibrate-only modes intentionally skip the tone —
-        // vibrate() above still fires its own haptic in vibrate mode.
-    }
-
-=======
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
     // Everything sits inside one bottom-weighted Column instead of the keypad
     // being centered in leftover space — that centering was exactly what
     // created the large empty gap between the number display and the keys
@@ -157,11 +117,7 @@ fun DialerScreen(
         ) {
             Text(
                 text = number,
-<<<<<<< HEAD
-                fontSize = if (number.length > 10) 32.sp else 42.sp,
-=======
                 fontSize = if (number.length > 10) 28.sp else 34.sp,
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                 fontWeight = FontWeight.Light,
                 color = palette.textPrimary,
                 textAlign = TextAlign.Center
@@ -229,11 +185,7 @@ fun DialerScreen(
                             palette = palette,
                             onPress = {
                                 number += key.digit
-<<<<<<< HEAD
-                                playDtmfIfAllowed(key.digit.first())
-=======
                                 dtmfPlayer.play(key.digit.first())
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                                 vibrate()
                             }
                         )
@@ -274,9 +226,23 @@ fun DialerScreen(
                 enter = fadeIn() + scaleIn(initialScale = 0.7f),
                 exit = fadeOut() + scaleOut(targetScale = 0.7f)
             ) {
-                IconButton(
-                    onClick = { number = number.dropLast(1) },
-                    modifier = Modifier.size(44.dp)
+                var isBackspacePressed by remember { mutableStateOf(false) }
+                val backspaceScale by animateFloatSpring(if (isBackspacePressed) 0.85f else 1f)
+
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .scale(backspaceScale)
+                        .clip(CircleShape)
+                        .repeatingClickable(
+                            enabled = number.isNotEmpty(),
+                            onPressChange = { isBackspacePressed = it },
+                            onClick = {
+                                number = number.dropLast(1)
+                                vibrate()
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Filled.Backspace, contentDescription = "Backspace", tint = palette.textSecondary)
                 }
@@ -295,6 +261,60 @@ private fun animateFloatSpring(target: Float) = androidx.compose.animation.core.
     animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
     label = "press-scale"
 )
+
+/**
+ * Press-and-hold-to-repeat gesture for the backspace key.
+ *
+ * The bug this fixes: IconButton's onClick fires exactly once per tap —
+ * there's no built-in "keep firing while held" behavior in Compose's
+ * click handling, so a long press on backspace used to do nothing more
+ * than a single short tap did. This replaces that click with a manual
+ * gesture loop: [onClick] fires immediately on press-down (so a quick tap
+ * still behaves exactly like a normal click), and if the finger is still
+ * down after [initialDelayMillis], it keeps firing on a repeat cadence
+ * that starts at [initialDelayMillis] and decays toward [minDelayMillis]
+ * — i.e. it gets faster the longer you hold, matching how hold-to-delete
+ * behaves on a keyboard rather than ticking at one flat rate.
+ *
+ * [onPressChange] reports press state for driving a visual (e.g. the
+ * existing scale-down-on-press look already used elsewhere in this file)
+ * since this bypasses IconButton/InteractionSource entirely.
+ */
+private fun Modifier.repeatingClickable(
+    enabled: Boolean = true,
+    initialDelayMillis: Long = 400L,
+    minDelayMillis: Long = 45L,
+    delayDecayFactor: Float = 0.82f,
+    onPressChange: (Boolean) -> Unit = {},
+    onClick: () -> Unit
+): Modifier = composed {
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentEnabled by rememberUpdatedState(enabled)
+
+    this.pointerInput(Unit) {
+        coroutineScope {
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false)
+                if (!currentEnabled) return@awaitEachGesture
+
+                onPressChange(true)
+                currentOnClick() // immediate response — a quick tap still deletes exactly one char
+
+                var waitMillis = initialDelayMillis
+                // Each iteration races the repeat interval against the pointer
+                // being released: waitForUpOrCancellation suspends until an
+                // up/cancel event, and if that hasn't happened by the time
+                // withTimeoutOrNull's window elapses, the finger is still down
+                // and it's time to fire again.
+                while (withTimeoutOrNull(waitMillis) { waitForUpOrCancellation(); false } ?: true) {
+                    currentOnClick()
+                    waitMillis = (waitMillis * delayDecayFactor).toLong().coerceAtLeast(minDelayMillis)
+                }
+                onPressChange(false)
+            }
+        }
+    }
+}
 
 @Composable
 private fun DialerKey(

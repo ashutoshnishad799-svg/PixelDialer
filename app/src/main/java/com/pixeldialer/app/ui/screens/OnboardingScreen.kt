@@ -5,7 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,25 +22,35 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pixeldialer.app.R
 
-private data class OnboardStep(val title: String, val subtitle: String)
+private data class OnboardStep(val title: String, val subtitle: String, val imageRes: Int)
 
 private val featureSteps = listOf(
-    OnboardStep("All your calls,\nin one place", "Recents, contacts, and dialing — fast and organized, exactly how you'd expect."),
-    OnboardStep("Stay ahead\nof spam", "Suspicious and unknown callers get flagged automatically, before they ever reach you."),
-    OnboardStep("Make it\nyours", "Pick from gradient, solid, and dark themes — or let it follow your system automatically.")
+    OnboardStep(
+        "All your calls,\nin one place",
+        "Recents, contacts, and dialing — fast and organized, exactly how you'd expect.",
+        R.drawable.onboarding_calls
+    ),
+    OnboardStep(
+        "Stay ahead\nof spam",
+        "Suspicious and unknown callers get flagged automatically, before they ever reach you.",
+        R.drawable.onboarding_protect
+    ),
+    OnboardStep(
+        "Make it\nyours",
+        "Pick from gradient, solid, and dark themes — or let it follow your system automatically.",
+        R.drawable.onboarding_theme
+    )
 )
 
 /**
@@ -52,6 +62,13 @@ private val featureSteps = listOf(
  * got compressed and re-laid-out on top of neighboring content, which is
  * what produced the "text and buttons duplicated near the status bar"
  * look in testing. Nothing here sizes itself larger than its assigned slot.
+ *
+ * Illustration note: the feature pages now show real artwork
+ * (onboarding_calls / onboarding_protect / onboarding_theme — cropped
+ * from the app's own promo art) instead of hand-drawn Canvas shapes.
+ * Each image is bounded to a fraction of its weighted Box with
+ * ContentScale.Fit, so the "never exceed assigned slot" rule above still
+ * holds for images the same way it did for the old Canvas drawing.
  */
 @Composable
 fun OnboardingScreen(
@@ -91,13 +108,7 @@ fun OnboardingScreen(
                     0 -> WelcomePage()
                     in 1..3 -> {
                         val f = featureSteps[step - 1]
-                        FeaturePage(title = f.title, subtitle = f.subtitle) { phase ->
-                            when (step) {
-                                1 -> CallsIllustration(phase)
-                                2 -> ShieldIllustration(phase)
-                                else -> PaletteIllustration(phase)
-                            }
-                        }
+                        FeaturePage(title = f.title, subtitle = f.subtitle, imageRes = f.imageRes)
                     }
                     else -> PersonalizePage(onDone = onFinished)
                 }
@@ -167,100 +178,43 @@ private fun WelcomePage() {
  * into two explicit weighted rows (0.62 / 0.38) that always sum to the
  * full available height, rather than letting the illustration take a
  * fixed dp size and hoping the text underneath fits in whatever's left.
+ *
+ * The illustration gets a slow, continuous float — a few dp of vertical
+ * drift plus a faint scale breathe — applied via graphicsLayer, which
+ * only repaints rather than triggering a relayout on every frame.
  */
 @Composable
-private fun FeaturePage(title: String, subtitle: String, illustration: @Composable (Float) -> Unit) {
+private fun FeaturePage(title: String, subtitle: String, imageRes: Int) {
     val transition = rememberInfiniteTransition(label = "illustration-motion")
     val phase by transition.animateFloat(
         initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(3400, easing = LinearEasing)),
         label = "motion-phase"
     )
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp)) {
         Box(modifier = Modifier.weight(0.62f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            illustration(phase)
+            val angle = (phase * 2 * Math.PI).toFloat()
+            val drift = kotlin.math.sin(angle) * 6f
+            val breathe = 1f + kotlin.math.sin(angle) * 0.015f
+            Image(
+                painter = painterResource(id = imageRes),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth(0.74f)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        translationY = drift
+                        scaleX = breathe
+                        scaleY = breathe
+                    }
+            )
         }
         Column(modifier = Modifier.weight(0.38f).fillMaxWidth(), verticalArrangement = Arrangement.Top) {
             Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, lineHeight = 34.sp)
             Spacer(Modifier.height(10.dp))
             Text(subtitle, fontSize = 14.sp, color = Color.White.copy(alpha = 0.65f), lineHeight = 20.sp)
-        }
-    }
-}
-
-/** Original illustration: phone card with orbiting call-log dots. */
-@Composable
-private fun CallsIllustration(phase: Float) {
-    Canvas(modifier = Modifier.size(200.dp)) {
-        val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(Brush.radialGradient(listOf(Color(0xFF52E0C8).copy(alpha = 0.25f), Color.Transparent)), radius = size.minDimension / 2f, center = center)
-
-        val cardW = size.width * 0.34f
-        val cardH = size.height * 0.55f
-        drawRoundRect(
-            color = Color.White.copy(alpha = 0.92f),
-            topLeft = Offset(center.x - cardW / 2f, center.y - cardH / 2f),
-            size = Size(cardW, cardH),
-            cornerRadius = CornerRadius(24f, 24f)
-        )
-        drawCircle(Color(0xFF12615A).copy(alpha = 0.5f), radius = 5f, center = Offset(center.x, center.y - cardH / 2f + 14f))
-
-        repeat(3) { i ->
-            val angle = (phase * 2 * Math.PI + i * (2 * Math.PI / 3)).toFloat()
-            val orbitR = size.minDimension * 0.42f
-            val dotCenter = Offset(center.x + orbitR * kotlin.math.cos(angle), center.y + orbitR * kotlin.math.sin(angle) * 0.6f)
-            drawCircle(Color(0xFF7FE0D6), radius = 9f, center = dotCenter)
-        }
-    }
-}
-
-/** Original illustration: shield with a rotating scan-sweep arc. */
-@Composable
-private fun ShieldIllustration(phase: Float) {
-    Canvas(modifier = Modifier.size(200.dp)) {
-        val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(Brush.radialGradient(listOf(Color(0xFFFF6B5B).copy(alpha = 0.2f), Color.Transparent)), radius = size.minDimension / 2f, center = center)
-
-        val w = size.width * 0.3f
-        val h = size.height * 0.42f
-        val shieldPath = Path().apply {
-            moveTo(center.x, center.y - h / 2f)
-            lineTo(center.x + w / 2f, center.y - h / 2f + h * 0.18f)
-            lineTo(center.x + w / 2f, center.y + h * 0.1f)
-            quadraticBezierTo(center.x + w / 2f, center.y + h / 2f, center.x, center.y + h / 2f + h * 0.15f)
-            quadraticBezierTo(center.x - w / 2f, center.y + h / 2f, center.x - w / 2f, center.y + h * 0.1f)
-            lineTo(center.x - w / 2f, center.y - h / 2f + h * 0.18f)
-            close()
-        }
-        drawPath(shieldPath, color = Color.White.copy(alpha = 0.92f))
-
-        val sweepAngle = phase * 360f
-        drawArc(
-            color = Color(0xFFFF6B5B).copy(alpha = 0.7f),
-            startAngle = sweepAngle,
-            sweepAngle = 50f,
-            useCenter = false,
-            topLeft = Offset(center.x - 60f, center.y - 60f),
-            size = Size(120f, 120f),
-            style = Stroke(width = 3f, cap = StrokeCap.Round)
-        )
-    }
-}
-
-/** Original illustration: three color swatches gently bobbing at phase-offset heights. */
-@Composable
-private fun PaletteIllustration(phase: Float) {
-    Canvas(modifier = Modifier.size(200.dp)) {
-        val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(Brush.radialGradient(listOf(Color(0xFFB18CFF).copy(alpha = 0.22f), Color.Transparent)), radius = size.minDimension / 2f, center = center)
-
-        val swatches = listOf(Color(0xFF7FE0D6) to -60f, Color(0xFFFFC08C) to 0f, Color(0xFFB18CFF) to 60f)
-        swatches.forEachIndexed { i, (color, xOffset) ->
-            val bob = kotlin.math.sin((phase * 2 * Math.PI + i * 1.4).toFloat()) * 10f
-            val pos = Offset(center.x + xOffset, center.y + bob)
-            drawCircle(color = color, radius = 30f, center = pos)
-            drawCircle(color = Color.White.copy(alpha = 0.4f), radius = 30f, center = pos, style = Stroke(width = 2f))
         }
     }
 }

@@ -67,25 +67,8 @@ class MainActivity : ComponentActivity() {
             val scope = androidx.compose.runtime.rememberCoroutineScope()
             var selectedTab by remember { mutableStateOf(DialerTab.RECENT) }
             var showThemePicker by remember { mutableStateOf(false) }
-<<<<<<< HEAD
-            var showAddContactFromDialer by remember { mutableStateOf<String?>(null) }
             var overlay by remember { mutableStateOf(OverlayScreen.NONE) }
 
-            // Without this, Android's system back gesture/button has no
-            // idea an overlay (Settings/Account/etc) is "open" — it just
-            // sees the Activity and finishes it, which is what made the
-            // whole app close instead of only the overlay. BackHandler
-            // intercepts system back specifically while an overlay is
-            // showing and routes it through the same close logic the
-            // in-app back arrow already used.
-            androidx.activity.compose.BackHandler(enabled = overlay != OverlayScreen.NONE) {
-                overlay = OverlayScreen.NONE
-            }
-
-=======
-            var overlay by remember { mutableStateOf(OverlayScreen.NONE) }
-
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
             val permissionLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestMultiplePermissions()
             ) { results ->
@@ -199,19 +182,11 @@ class MainActivity : ComponentActivity() {
                                         contacts = contacts,
                                         onCall = { contact -> placeCall(contact.phoneNumber) },
                                         onMessage = { contact -> sendMessage(contact.phoneNumber) },
-<<<<<<< HEAD
-                                        onSaveNewContact = { input -> viewModel.saveNewContact(input) { } },
-=======
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     DialerTab.DIALER -> DialerScreen(
                                         contacts = contacts,
                                         onCall = { number -> placeCall(number) },
-<<<<<<< HEAD
-                                        onAddContact = { number -> showAddContactFromDialer = number },
-=======
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                                         modifier = Modifier.fillMaxSize()
                                     )
                                     DialerTab.PROTECT -> ProtectScreen(
@@ -326,23 +301,6 @@ class MainActivity : ComponentActivity() {
                             onDismiss = { showThemePicker = false }
                         )
                     }
-<<<<<<< HEAD
-
-                    // The "Add to Contacts" chip on the Dialer tab previously
-                    // called an onAddContact that was never wired to
-                    // anything at this level — it silently did nothing,
-                    // which is why the dialog appeared to never open.
-                    showAddContactFromDialer?.let { prefillNumber ->
-                        com.pixeldialer.app.ui.components.AddContactDialog(
-                            prefillNumber = prefillNumber,
-                            onDismiss = { showAddContactFromDialer = null },
-                            onSave = { input ->
-                                viewModel.saveNewContact(input) { showAddContactFromDialer = null }
-                            }
-                        )
-                    }
-=======
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                 }
             }
         }

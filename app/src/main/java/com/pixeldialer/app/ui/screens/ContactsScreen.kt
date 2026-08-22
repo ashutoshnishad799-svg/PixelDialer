@@ -221,13 +221,6 @@ fun ContactsScreen(
                                 .background(palette.cardBackground)
                         ) {
                             list.forEachIndexed { index, person ->
-<<<<<<< HEAD
-                                PersonRow(
-                                    person = person,
-                                    onCall = onCall,
-                                    onMessage = onMessage
-                                )
-=======
                                 ScrollRevealItem(index = index) {
                                     PersonRow(
                                         person = person,
@@ -235,7 +228,6 @@ fun ContactsScreen(
                                         onMessage = onMessage
                                     )
                                 }
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
                                 if (index != list.lastIndex) {
                                     HorizontalDivider(color = palette.cardBorder, thickness = 1.dp)
                                 }
@@ -261,8 +253,6 @@ fun ContactsScreen(
     }
 }
 
-<<<<<<< HEAD
-=======
 /** Fades each row in slightly as it first composes, staggered by index — a lightweight per-item scroll-reveal rather than a heavy per-frame scroll listener. */
 @Composable
 private fun ScrollRevealItem(index: Int, content: @Composable () -> Unit) {
@@ -278,7 +268,6 @@ private fun ScrollRevealItem(index: Int, content: @Composable () -> Unit) {
     }
 }
 
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
 /**
  * A person's row. If they have exactly one number, tapping/swiping the row
  * acts directly on it (same behavior as before). If they have multiple

@@ -86,23 +86,6 @@ class MainViewModel(
         }
     }
 
-<<<<<<< HEAD
-    fun saveNewContact(input: com.pixeldialer.app.ui.components.NewContactInput, onDone: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val success = contactsRepository.insertContact(
-                firstName = input.firstName,
-                lastName = input.lastName,
-                phoneNumber = input.phoneNumber,
-                phoneLabel = input.phoneLabel,
-                email = input.email
-            )
-            if (success) loadContacts()
-            onDone(success)
-        }
-    }
-
-=======
->>>>>>> ee565ffa9709f4cf1aa0b8c553ee7d10c2233d22
     /** Pulls existing device call history into Recents. Call once permissions are granted. */
     fun syncCallHistory() {
         viewModelScope.launch {
